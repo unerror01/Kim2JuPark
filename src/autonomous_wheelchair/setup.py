@@ -34,6 +34,7 @@ setup(
             'base_driver = autonomous_wheelchair.base_driver:main',
             'safety_monitor = autonomous_wheelchair.safety_monitor:main',
             'waypoint_navigator = autonomous_wheelchair.waypoint_navigator:main',
+            'wasd_teleop = autonomous_wheelchair.wasd_teleop:main',
         ],
     },
 )
