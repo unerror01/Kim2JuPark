@@ -1,0 +1,15 @@
+# YDLIDAR G2 -> /dev/ydlidar 심볼릭 링크
+#
+# ★ 주의 ★
+# 이 로봇에 꽂힌 YDLIDAR G2 와 ESP32 모터 컨트롤러가 둘 다 동일한 범용
+# Silicon Labs CP2102 USB-UART 브릿지를 사용해 idVendor/idProduct/serial 이
+# 완전히 동일하다 (10c4:ea60, serial "0001"). 그래서 vendor/product ID 로는
+# 두 장치를 구분할 수 없고, 물리적으로 꽂힌 USB 포트 경로(KERNELS)로 구분한다.
+# 즉, 라이다와 ESP32 는 항상 아래에 지정된 물리 포트에 꽂혀 있어야 한다.
+# 포트를 바꿔 꽂으면 아래 KERNELS 값을 실제 포트에 맞게 다시 확인해서 수정할 것:
+#   udevadm info -q path -n /dev/ttyUSBx
+#
+# 설치: sudo cp 99-ydlidar.rules /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger
+
+SUBSYSTEM=="tty", KERNELS=="4-1", MODE:="0777", GROUP:="dialout", SYMLINK+="ydlidar"
+SUBSYSTEM=="tty", KERNELS=="2-2", MODE:="0777", GROUP:="dialout", SYMLINK+="esp32"

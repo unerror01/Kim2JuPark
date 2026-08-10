@@ -1,0 +1,15 @@
+# waypoint_navigator 가 이름으로 조회하는 목표 지점 목록 (map 프레임 기준)
+# yaw 단위: radian
+waypoints:
+  home:
+    x: 0.0
+    y: 0.0
+    yaw: 0.0
+  point_a:
+    x: 2.0
+    y: 0.0
+    yaw: 0.0
+  point_b:
+    x: 2.0
+    y: 2.0
+    yaw: 1.57

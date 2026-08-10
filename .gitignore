@@ -1,0 +1,26 @@
+# colcon build artifacts
+build/
+install/
+log/
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# ROS2 launch cache
+**/launch/__pycache__/
+
+# arduino-cli / compiled firmware artifacts
+firmware/**/build/
+
+# third-party vendored clone (has its own upstream repo, tracked separately)
+src/ydlidar_ros2_driver/
+
+# editor / OS cruft
+.vscode/
+*.swp
+.DS_Store
+
+# Claude Code local settings (personal permission allowlist, not shared)
+.claude/settings.local.json
