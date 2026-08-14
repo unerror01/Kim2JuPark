@@ -11,5 +11,5 @@
 #
 # 설치: sudo cp 99-ydlidar.rules /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger
 
-SUBSYSTEM=="tty", KERNELS=="4-1", MODE:="0777", GROUP:="dialout", SYMLINK+="ydlidar"
-SUBSYSTEM=="tty", KERNELS=="2-2", MODE:="0777", GROUP:="dialout", SYMLINK+="esp32"
+SUBSYSTEM=="tty", KERNELS=="2-1", MODE:="0777", GROUP:="dialout", SYMLINK+="ydlidar"
+SUBSYSTEM=="tty", KERNELS=="4-1", MODE:="0777", GROUP:="dialout", SYMLINK+="esp32"
