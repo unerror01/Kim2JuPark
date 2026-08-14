@@ -16,8 +16,8 @@ import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.node import Node
 
-LINEAR_SPEED = 0.15   # m/s, 사람이 타는 저속 테스트용
-ANGULAR_SPEED = 0.3   # rad/s
+LINEAR_SPEED = 0.4    # m/s, 사람이 타는 저속 테스트용 (2026-08-14 0.15->0.4로 상향)
+ANGULAR_SPEED = 0.7   # rad/s (2026-08-14 0.3->0.7로 상향)
 PUBLISH_RATE = 10.0   # Hz
 
 
