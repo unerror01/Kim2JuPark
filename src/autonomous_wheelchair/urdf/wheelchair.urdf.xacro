@@ -13,7 +13,7 @@
   <!-- 라이다 장착 위치: base_link 기준 -->
   <xacro:property name="lidar_x" value="0.55"/>
   <xacro:property name="lidar_y" value="0.0"/>
-  <xacro:property name="lidar_z" value="0.35"/>
+  <xacro:property name="lidar_z" value="0.20"/>
 
   <material name="grey">
     <color rgba="0.5 0.5 0.5 1.0"/>
