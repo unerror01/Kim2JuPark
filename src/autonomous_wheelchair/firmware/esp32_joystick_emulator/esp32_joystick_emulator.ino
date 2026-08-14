@@ -51,6 +51,16 @@ static const float THROTTLE_DEADBAND_FWD = 0.45f;  // 잠정: 후진과 동일�
 static const float THROTTLE_DEADBAND_REV = 0.45f;  // 후진: 0.3 무반응 / 0.6 반응 -> 중간값
 static const float STEERING_DEADBAND = 0.45f;      // 좌회전 기준(0.3 무반응/0.6 반응), 우회전 미검증
 
+// ★ 2026-08-14: 전진(steering=0) 명령인데도 좌우 바퀴 속도가 다름 확인. 원래
+//   조이스틱으로 직접 밀었을 때는 좌우 차이가 없었으므로, steering DAC(0x60)의
+//   실제 중립 전압이 DAC_NEUTRAL(throttle 기준으로 실측한 값)과 정확히 같지
+//   않은 것으로 추정됨.
+//   보정 방법은 수동 관찰(눈으로 어느 쪽이 빠른지 보고 ±10카운트씩 재플래시)
+//   대신, 휠 엔코더 도착 후 좌우 tick 차이를 로그로 남겨 자동으로 트림 값을
+//   구하는 방식으로 진행 예정 (엔코더 프로토콜은 devlog 2026-08-10 참고).
+//   그 전까지는 0으로 유지.
+static const int STEERING_TRIM_COUNTS = 0;  // 엔코더 도착 후 자동 보정 예정, 그 전까지 0 유지
+
 static const unsigned long CMD_TIMEOUT_MS = 500;
 
 String rxBuffer;
@@ -87,7 +97,8 @@ void setThrottleSteering(float throttle, float steering) {
       : -remapPastDeadband(-steering, STEERING_DEADBAND);
 
   int throttle_count = DAC_NEUTRAL + (int)lroundf(throttle_mapped * DAC_MAX_DEFLECTION);
-  int steering_count = DAC_NEUTRAL + (int)lroundf(steering_mapped * DAC_MAX_DEFLECTION);
+  int steering_count = DAC_NEUTRAL + STEERING_TRIM_COUNTS +
+      (int)lroundf(steering_mapped * DAC_MAX_DEFLECTION);
 
   writeDac(DAC_ADDR_THROTTLE, throttle_count);
   writeDac(DAC_ADDR_STEERING, steering_count);
