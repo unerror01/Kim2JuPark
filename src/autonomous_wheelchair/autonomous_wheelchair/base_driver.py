@@ -48,7 +48,7 @@ class BaseDriver(Node):
         self.declare_parameter('invert_angular', False)
         self.declare_parameter('cmd_timeout', 0.5)
         self.declare_parameter('control_rate', 20.0)
-        self.declare_parameter('wheel_radius', 0.15)
+        self.declare_parameter('wheel_radius', 0.30)
         self.declare_parameter('wheel_separation', 0.56)
 
         self.serial_port = self.get_parameter('serial_port').value
