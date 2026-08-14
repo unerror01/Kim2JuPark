@@ -41,7 +41,13 @@ static const int DAC_MAX_DEFLECTION =
 // 움직이게 만든다 (0은 그대로 0 = 중립 유지, 워치독 안전에는 영향 없음).
 // ★ 우회전(steering<0) 데드밴드는 아직 실측 안 됨 -> 일단 좌회전과 동일하다고
 //   가정. 실측 후 다르면 STEERING_DEADBAND_NEG 로 분리해서 반영할 것.
-static const float THROTTLE_DEADBAND_FWD = 0.0f;   // 전진: 데드밴드 거의 없음(실측 0.1도 반응)
+// ★ 2026-08-14: 전진은 실측 당시 0.1에도 반응해서 보정을 0으로 뒀었는데, 그
+//   때문에 같은 정규화 명령값 기준 후진/조향(데드밴드 0.45 보정 적용)이 전진보다
+//   2.3~2.5배 큰 DAC 편차를 받아 실제 반응 속도가 눈에 띄게 빨랐던 것으로 확인됨
+//   (wasd_teleop 실차 테스트에서 발견). 전진 자체의 데드밴드는 아직 실측되지
+//   않았으므로, 좌우 균형을 맞추기 위해 일단 후진과 동일한 값으로 잠정 적용.
+//   실측 전까지는 근사치이니 다음 실측 시 갱신할 것.
+static const float THROTTLE_DEADBAND_FWD = 0.45f;  // 잠정: 후진과 동일값 (실측 필요)
 static const float THROTTLE_DEADBAND_REV = 0.45f;  // 후진: 0.3 무반응 / 0.6 반응 -> 중간값
 static const float STEERING_DEADBAND = 0.45f;      // 좌회전 기준(0.3 무반응/0.6 반응), 우회전 미검증
 
