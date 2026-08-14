@@ -2,7 +2,7 @@ ydlidar_ros2_driver_node:
   ros__parameters:
     port: /dev/ydlidar
     frame_id: laser_frame
-    ignore_array: ""
+    ignore_array: "129, 180, -180, -143"  # 2026-08-14: 라이다 후방(휠체어 프레임/등받이) 자체 차폐 구간 필터링
     baudrate: 230400
     lidar_type: 1
     device_type: 0
