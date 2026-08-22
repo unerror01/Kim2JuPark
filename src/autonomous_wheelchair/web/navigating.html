@@ -3,26 +3,48 @@
 <link rel="stylesheet" href="style.css">
 
 <div class="screen">
-  <h1 id="title">이동 중</h1>
-  <div id="status" class="status-banner">상태 확인 중...</div>
+  <div class="card">
+    <div class="card-header">실시간 이동 지도</div>
+    <div class="card-body">
+      <div id="status" class="status-banner">상태 확인 중...</div>
 
-  <div class="map-wrap">
-    <canvas id="map-canvas"></canvas>
-    <canvas id="pose-canvas"></canvas>
-  </div>
+      <div class="map-wrap">
+        <canvas id="map-canvas"></canvas>
+        <canvas id="pose-canvas"></canvas>
+      </div>
 
-  <div id="action-row" class="action-row">
-    <button id="stop-btn" class="big-btn warning">정지</button>
-    <button id="support-btn" class="big-btn danger">지원호출</button>
-    <button id="manual-btn" class="big-btn neutral">수동제어전환</button>
-  </div>
+      <div class="eyebrow"><span class="dot">✚</span> 환자용 이동 지원 시스템</div>
+      <h1 id="title" style="display:none;">이동 중</h1>
 
-  <div id="resume-row" class="action-row" style="display:none;">
-    <button id="resume-btn" class="big-btn success">재개</button>
-  </div>
+      <div id="action-row" class="action-row">
+        <button id="stop-btn" class="big-btn danger">
+          <span class="icon">✋</span>
+          <span class="label"><span class="label-main">비상 정지</span><span class="label-sub">Emergency Stop</span></span>
+        </button>
+        <button id="support-btn" class="big-btn success">
+          <span class="icon">📞</span>
+          <span class="label"><span class="label-main">지원 호출</span><span class="label-sub">Call for Support</span></span>
+        </button>
+        <button id="manual-btn" class="big-btn neutral">
+          <span class="icon">🕹️</span>
+          <span class="label"><span class="label-main">수동제어전환</span><span class="label-sub">Manual Control</span></span>
+        </button>
+      </div>
 
-  <div id="failed-row" class="action-row" style="display:none;">
-    <a href="destination.html" class="big-btn neutral" style="text-decoration:none; text-align:center; line-height: 2.2;">목적지 다시 선택</a>
+      <div id="resume-row" class="action-row" style="display:none;">
+        <button id="resume-btn" class="big-btn success">
+          <span class="icon">🔁</span>
+          <span class="label"><span class="label-main">재개</span><span class="label-sub">Resume</span></span>
+        </button>
+      </div>
+
+      <div id="failed-row" class="action-row" style="display:none;">
+        <a href="destination.html" class="big-btn neutral" style="text-decoration:none;">
+          <span class="icon">📍</span>
+          <span class="label"><span class="label-main">목적지 다시 선택</span><span class="label-sub">Choose Again</span></span>
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -43,15 +65,27 @@
 
     var ctx = mapCanvas.getContext('2d');
     var imgData = ctx.createImageData(width, height);
+    // 흑백 대신 UI 색상(민트=빈 공간 / 틸=장애물)으로 표시
+    var FREE = [234, 246, 242], OCC = [44, 95, 106], UNKNOWN = [199, 219, 214];
     for (var j = 0; j < height; j++) {
       for (var i = 0; i < width; i++) {
         var val = msg.data[j * width + i];
-        var color = (val < 0) ? 130 : Math.round(255 - val * 2.55);
+        var rgb;
+        if (val < 0) {
+          rgb = UNKNOWN;
+        } else {
+          var t = val / 100;
+          rgb = [
+            Math.round(FREE[0] + (OCC[0] - FREE[0]) * t),
+            Math.round(FREE[1] + (OCC[1] - FREE[1]) * t),
+            Math.round(FREE[2] + (OCC[2] - FREE[2]) * t),
+          ];
+        }
         var destRow = height - 1 - j; // OccupancyGrid 원점은 좌하단, canvas 는 좌상단이라 상하 반전
         var destIdx = (destRow * width + i) * 4;
-        imgData.data[destIdx] = color;
-        imgData.data[destIdx + 1] = color;
-        imgData.data[destIdx + 2] = color;
+        imgData.data[destIdx] = rgb[0];
+        imgData.data[destIdx + 1] = rgb[1];
+        imgData.data[destIdx + 2] = rgb[2];
         imgData.data[destIdx + 3] = 255;
       }
     }
@@ -80,7 +114,7 @@
     var ctx = poseCanvas.getContext('2d');
     ctx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
     var r = Math.max(3, mapInfo.width * 0.015);
-    ctx.fillStyle = '#2f6fed';
+    ctx.fillStyle = '#e5484d';
     ctx.beginPath();
     ctx.arc(canvasX, canvasY, r, 0, Math.PI * 2);
     ctx.fill();

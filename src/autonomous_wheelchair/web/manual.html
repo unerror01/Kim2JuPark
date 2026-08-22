@@ -3,28 +3,35 @@
 <link rel="stylesheet" href="style.css">
 
 <div class="screen">
-  <h1>수동 제어</h1>
-  <p class="subtitle">버튼을 누르고 있는 동안만 움직입니다.</p>
+  <div class="card">
+    <div class="card-header">수동 제어</div>
+    <div class="card-body">
+      <p class="subtitle">버튼을 누르고 있는 동안만 움직입니다.</p>
 
-  <div class="dpad">
-    <div></div>
-    <button id="btn-fwd" aria-label="전진">▲</button>
-    <div></div>
-    <button id="btn-left" aria-label="좌회전">◀</button>
-    <div></div>
-    <button id="btn-right" aria-label="우회전">▶</button>
-    <div></div>
-    <button id="btn-back" aria-label="후진">▼</button>
-    <div></div>
-  </div>
+      <div class="dpad">
+        <div></div>
+        <button id="btn-fwd" aria-label="전진">▲</button>
+        <div></div>
+        <button id="btn-left" aria-label="좌회전">◀</button>
+        <div></div>
+        <button id="btn-right" aria-label="우회전">▶</button>
+        <div></div>
+        <button id="btn-back" aria-label="후진">▼</button>
+        <div></div>
+      </div>
 
-  <div class="action-row">
-    <button id="auto-btn" class="big-btn primary">자동전환 (목적지 선택으로)</button>
-  </div>
+      <div class="action-row">
+        <button id="auto-btn" class="big-btn primary">
+          <span class="icon">🧭</span>
+          <span class="label"><span class="label-main">자동전환</span><span class="label-sub">Back to Destination Select</span></span>
+        </button>
+      </div>
 
-  <h1 style="font-size:1.6rem; margin-top: 12px;">목적지로 바로 이동</h1>
-  <div id="dest-list" class="dest-list">
-    <p class="empty">목적지 목록 불러오는 중...</p>
+      <h1 style="font-size:1.3rem; margin-top: 4px;">목적지로 바로 이동</h1>
+      <div id="dest-list" class="dest-list">
+        <p class="empty">목적지 목록 불러오는 중...</p>
+      </div>
+    </div>
   </div>
 </div>
 

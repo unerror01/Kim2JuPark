@@ -3,35 +3,37 @@
 <link rel="stylesheet" href="style.css">
 
 <div class="screen">
-  <h1>관리자 페이지</h1>
+  <div class="card" style="max-width: 860px;">
+    <div class="card-header">관리자 페이지</div>
+    <div class="card-body">
+      <section>
+        <h1 style="font-size:1.3rem;">지원 요청</h1>
+        <div id="call-log" class="call-log">
+          <p class="empty">아직 요청이 없습니다.</p>
+        </div>
+      </section>
 
-  <section>
-    <h1 style="font-size:1.6rem;">지원 요청</h1>
-    <div id="call-log" class="call-log">
-      <p class="empty">아직 요청이 없습니다.</p>
+      <section>
+        <h1 style="font-size:1.3rem;">목적지 관리</h1>
+        <p class="subtitle" id="current-pose">현재 위치: 알 수 없음</p>
+        <div class="action-row">
+          <input id="new-wp-name" class="text-input" type="text" placeholder="새 목적지 이름">
+          <button id="save-current-btn" class="big-btn primary compact">
+            현재 위치를 이 이름으로 저장
+          </button>
+        </div>
+
+        <table class="wp-table">
+          <thead>
+            <tr><th>이름</th><th>x</th><th>y</th><th>yaw</th><th></th><th></th></tr>
+          </thead>
+          <tbody id="wp-table-body">
+            <tr><td colspan="6">목적지 목록 불러오는 중...</td></tr>
+          </tbody>
+        </table>
+      </section>
     </div>
-  </section>
-
-  <section>
-    <h1 style="font-size:1.6rem;">목적지 관리</h1>
-    <p class="subtitle" id="current-pose">현재 위치: 알 수 없음</p>
-    <div class="action-row">
-      <input id="new-wp-name" type="text" placeholder="새 목적지 이름"
-             style="font-size:1.1rem; padding:10px 14px; border-radius:10px; border:1px solid #2a3140; background:#05070a; color:#f2f4f8;">
-      <button id="save-current-btn" class="big-btn primary" style="min-height:56px; padding:14px 24px; font-size:1.1rem;">
-        현재 위치를 이 이름으로 저장
-      </button>
-    </div>
-
-    <table class="wp-table">
-      <thead>
-        <tr><th>이름</th><th>x</th><th>y</th><th>yaw</th><th></th><th></th></tr>
-      </thead>
-      <tbody id="wp-table-body">
-        <tr><td colspan="6">목적지 목록 불러오는 중...</td></tr>
-      </tbody>
-    </table>
-  </section>
+  </div>
 </div>
 
 <script src="vendor/roslib.min.js"></script>

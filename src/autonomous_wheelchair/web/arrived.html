@@ -3,10 +3,22 @@
 <link rel="stylesheet" href="style.css">
 
 <div class="screen center">
-  <h1>목적지에 도착했습니다</h1>
-  <div class="action-row">
-    <button id="return-btn" class="big-btn primary">반납</button>
-    <button id="wait-btn" class="big-btn neutral">대기</button>
+  <div class="card">
+    <div class="card-header">도착</div>
+    <div class="card-body center">
+      <div class="brand-icon">✅</div>
+      <h1>목적지에 도착했습니다</h1>
+      <div class="action-row">
+        <button id="return-btn" class="big-btn primary">
+          <span class="icon">🏠</span>
+          <span class="label"><span class="label-main">반납</span><span class="label-sub">Return to Start</span></span>
+        </button>
+        <button id="wait-btn" class="big-btn neutral">
+          <span class="icon">⏸️</span>
+          <span class="label"><span class="label-main">대기</span><span class="label-sub">Wait Here</span></span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
