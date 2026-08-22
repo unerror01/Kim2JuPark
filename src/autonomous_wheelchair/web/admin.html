@@ -1,0 +1,133 @@
+<title>관리자 페이지</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="screen">
+  <h1>관리자 페이지</h1>
+
+  <section>
+    <h1 style="font-size:1.6rem;">지원 요청</h1>
+    <div id="call-log" class="call-log">
+      <p class="empty">아직 요청이 없습니다.</p>
+    </div>
+  </section>
+
+  <section>
+    <h1 style="font-size:1.6rem;">목적지 관리</h1>
+    <p class="subtitle" id="current-pose">현재 위치: 알 수 없음</p>
+    <div class="action-row">
+      <input id="new-wp-name" type="text" placeholder="새 목적지 이름"
+             style="font-size:1.1rem; padding:10px 14px; border-radius:10px; border:1px solid #2a3140; background:#05070a; color:#f2f4f8;">
+      <button id="save-current-btn" class="big-btn primary" style="min-height:56px; padding:14px 24px; font-size:1.1rem;">
+        현재 위치를 이 이름으로 저장
+      </button>
+    </div>
+
+    <table class="wp-table">
+      <thead>
+        <tr><th>이름</th><th>x</th><th>y</th><th>yaw</th><th></th><th></th></tr>
+      </thead>
+      <tbody id="wp-table-body">
+        <tr><td colspan="6">목적지 목록 불러오는 중...</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<script src="vendor/roslib.min.js"></script>
+<script src="ros-connection.js"></script>
+<script>
+  function formatTime(unixSeconds) {
+    var d = new Date(unixSeconds * 1000);
+    return d.toLocaleTimeString('ko-KR', { hour12: false });
+  }
+
+  WheelchairUi.connect(function (ros) {
+    var callLogEl = document.getElementById('call-log');
+    new ROSLIB.Topic({ ros: ros, name: '/admin/support_calls', messageType: 'std_msgs/String' })
+      .subscribe(function (msg) {
+        var data;
+        try { data = JSON.parse(msg.data); } catch (e) { return; }
+        if (callLogEl.querySelector('.empty')) callLogEl.innerHTML = '';
+        var item = document.createElement('div');
+        item.className = 'call-item ' + (data.type || '');
+        item.textContent = '[' + formatTime(data.timestamp) + '] 지원 요청'
+          + (data.destination ? ' (목적지: ' + data.destination + ')' : '');
+        callLogEl.insertBefore(item, callLogEl.firstChild);
+      });
+
+    var latestPose = null;
+    var currentPoseEl = document.getElementById('current-pose');
+    new ROSLIB.Topic({ ros: ros, name: '/amcl_pose', messageType: 'geometry_msgs/PoseWithCovarianceStamped' })
+      .subscribe(function (msg) {
+        latestPose = msg.pose.pose;
+        currentPoseEl.textContent = '현재 위치: x=' + latestPose.position.x.toFixed(2)
+          + ', y=' + latestPose.position.y.toFixed(2);
+      });
+
+    var wpAddTopic = new ROSLIB.Topic({ ros: ros, name: '/ui/waypoint_add', messageType: 'std_msgs/String' });
+    var wpDeleteTopic = new ROSLIB.Topic({ ros: ros, name: '/ui/waypoint_delete', messageType: 'std_msgs/String' });
+
+    document.getElementById('save-current-btn').addEventListener('click', function () {
+      var nameInput = document.getElementById('new-wp-name');
+      var name = nameInput.value.trim();
+      if (!name) { alert('목적지 이름을 입력해주세요.'); return; }
+      wpAddTopic.publish(new ROSLIB.Message({ data: JSON.stringify({ name: name }) }));
+      nameInput.value = '';
+    });
+
+    var wpTableBody = document.getElementById('wp-table-body');
+    new ROSLIB.Topic({ ros: ros, name: '/waypoints_list', messageType: 'std_msgs/String' })
+      .subscribe(function (msg) {
+        var waypoints;
+        try { waypoints = JSON.parse(msg.data); } catch (e) { return; }
+        wpTableBody.innerHTML = '';
+        if (!waypoints || waypoints.length === 0) {
+          wpTableBody.innerHTML = '<tr><td colspan="6">등록된 목적지가 없습니다.</td></tr>';
+          return;
+        }
+        waypoints.forEach(function (wp) {
+          var tr = document.createElement('tr');
+
+          var nameTd = document.createElement('td');
+          var nameInput = document.createElement('input');
+          nameInput.value = wp.name;
+          nameTd.appendChild(nameInput);
+          tr.appendChild(nameTd);
+
+          [wp.x, wp.y, wp.yaw].forEach(function (v) {
+            var td = document.createElement('td');
+            td.textContent = Number(v).toFixed(2);
+            tr.appendChild(td);
+          });
+
+          var renameTd = document.createElement('td');
+          var renameBtn = document.createElement('button');
+          renameBtn.className = 'small-btn';
+          renameBtn.textContent = '이름 변경';
+          renameBtn.addEventListener('click', function () {
+            var newName = nameInput.value.trim();
+            if (!newName || newName === wp.name) return;
+            wpAddTopic.publish(new ROSLIB.Message({
+              data: JSON.stringify({ name: newName, x: wp.x, y: wp.y, yaw: wp.yaw }),
+            }));
+            wpDeleteTopic.publish(new ROSLIB.Message({ data: wp.name }));
+          });
+          renameTd.appendChild(renameBtn);
+          tr.appendChild(renameTd);
+
+          var deleteTd = document.createElement('td');
+          var deleteBtn = document.createElement('button');
+          deleteBtn.className = 'small-btn danger';
+          deleteBtn.textContent = '삭제';
+          deleteBtn.addEventListener('click', function () {
+            if (!confirm(wp.name + ' 목적지를 삭제할까요?')) return;
+            wpDeleteTopic.publish(new ROSLIB.Message({ data: wp.name }));
+          });
+          deleteTd.appendChild(deleteBtn);
+          tr.appendChild(deleteTd);
+
+          wpTableBody.appendChild(tr);
+        });
+      });
+  });
+</script>

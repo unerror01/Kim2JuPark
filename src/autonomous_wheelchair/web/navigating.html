@@ -1,0 +1,150 @@
+<title>이동 중</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="screen">
+  <h1 id="title">이동 중</h1>
+  <div id="status" class="status-banner">상태 확인 중...</div>
+
+  <div class="map-wrap">
+    <canvas id="map-canvas"></canvas>
+    <canvas id="pose-canvas"></canvas>
+  </div>
+
+  <div id="action-row" class="action-row">
+    <button id="stop-btn" class="big-btn warning">정지</button>
+    <button id="support-btn" class="big-btn danger">지원호출</button>
+    <button id="manual-btn" class="big-btn neutral">수동제어전환</button>
+  </div>
+
+  <div id="resume-row" class="action-row" style="display:none;">
+    <button id="resume-btn" class="big-btn success">재개</button>
+  </div>
+
+  <div id="failed-row" class="action-row" style="display:none;">
+    <a href="destination.html" class="big-btn neutral" style="text-decoration:none; text-align:center; line-height: 2.2;">목적지 다시 선택</a>
+  </div>
+</div>
+
+<script src="vendor/roslib.min.js"></script>
+<script src="ros-connection.js"></script>
+<script>
+  var mapCanvas = document.getElementById('map-canvas');
+  var poseCanvas = document.getElementById('pose-canvas');
+  var mapInfo = null;
+
+  function drawMap(msg) {
+    var info = msg.info;
+    var width = info.width, height = info.height;
+    mapCanvas.width = width;
+    mapCanvas.height = height;
+    poseCanvas.width = width;
+    poseCanvas.height = height;
+
+    var ctx = mapCanvas.getContext('2d');
+    var imgData = ctx.createImageData(width, height);
+    for (var j = 0; j < height; j++) {
+      for (var i = 0; i < width; i++) {
+        var val = msg.data[j * width + i];
+        var color = (val < 0) ? 130 : Math.round(255 - val * 2.55);
+        var destRow = height - 1 - j; // OccupancyGrid 원점은 좌하단, canvas 는 좌상단이라 상하 반전
+        var destIdx = (destRow * width + i) * 4;
+        imgData.data[destIdx] = color;
+        imgData.data[destIdx + 1] = color;
+        imgData.data[destIdx + 2] = color;
+        imgData.data[destIdx + 3] = 255;
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    mapInfo = {
+      width: width,
+      height: height,
+      resolution: info.resolution,
+      originX: info.origin.position.x,
+      originY: info.origin.position.y,
+    };
+  }
+
+  function drawPose(msg) {
+    if (!mapInfo) return;
+    var p = msg.pose.pose;
+    var i = (p.position.x - mapInfo.originX) / mapInfo.resolution;
+    var j = (p.position.y - mapInfo.originY) / mapInfo.resolution;
+    var canvasX = i;
+    var canvasY = mapInfo.height - 1 - j;
+    var q = p.orientation;
+    var yaw = Math.atan2(2 * (q.w * q.z + q.x * q.y), 1 - 2 * (q.y * q.y + q.z * q.z));
+    var screenAngle = -yaw; // canvas y축이 world y축과 반대 방향
+
+    var ctx = poseCanvas.getContext('2d');
+    ctx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+    var r = Math.max(3, mapInfo.width * 0.015);
+    ctx.fillStyle = '#2f6fed';
+    ctx.beginPath();
+    ctx.arc(canvasX, canvasY, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.max(1, r * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(canvasX, canvasY);
+    ctx.lineTo(canvasX + Math.cos(screenAngle) * r * 2.2, canvasY + Math.sin(screenAngle) * r * 2.2);
+    ctx.stroke();
+  }
+
+  var titleEl = document.getElementById('title');
+  var statusEl = document.getElementById('status');
+  var actionRow = document.getElementById('action-row');
+  var resumeRow = document.getElementById('resume-row');
+  var failedRow = document.getElementById('failed-row');
+
+  var LABELS = {
+    NAVIGATING: '목적지로 이동 중',
+    RETURNING: '원래 위치로 복귀 중',
+    STOPPED: '정지됨',
+    FAILED: '이동 실패',
+  };
+
+  function updateUiForState(state) {
+    titleEl.textContent = LABELS[state] || '이동 중';
+    statusEl.textContent = LABELS[state] || state;
+    statusEl.className = 'status-banner' + (state === 'STOPPED' ? ' stopped' : '') + (state === 'FAILED' ? ' failed' : '');
+
+    actionRow.style.display = (state === 'NAVIGATING' || state === 'RETURNING') ? 'flex' : 'none';
+    resumeRow.style.display = (state === 'STOPPED') ? 'flex' : 'none';
+    failedRow.style.display = (state === 'FAILED') ? 'flex' : 'none';
+
+    switch (state) {
+      case 'ARRIVED':
+        window.location.href = 'arrived.html';
+        break;
+      case 'MANUAL':
+        window.location.href = 'manual.html';
+        break;
+      case 'IDLE':
+        window.location.href = 'destination.html';
+        break;
+    }
+  }
+
+  WheelchairUi.connect(function (ros) {
+    new ROSLIB.Topic({ ros: ros, name: '/map', messageType: 'nav_msgs/OccupancyGrid' })
+      .subscribe(drawMap);
+    new ROSLIB.Topic({ ros: ros, name: '/amcl_pose', messageType: 'geometry_msgs/PoseWithCovarianceStamped' })
+      .subscribe(drawPose);
+    new ROSLIB.Topic({ ros: ros, name: '/trip_state', messageType: 'std_msgs/String' })
+      .subscribe(function (msg) { updateUiForState(msg.data); });
+
+    document.getElementById('stop-btn').addEventListener('click', function () {
+      WheelchairUi.publish(ros, '/ui/stop', 'std_msgs/Bool', { data: true });
+    });
+    document.getElementById('support-btn').addEventListener('click', function () {
+      WheelchairUi.publish(ros, '/ui/support_call', 'std_msgs/Bool', { data: true });
+    });
+    document.getElementById('manual-btn').addEventListener('click', function () {
+      WheelchairUi.publish(ros, '/ui/set_manual_mode', 'std_msgs/Bool', { data: true });
+    });
+    document.getElementById('resume-btn').addEventListener('click', function () {
+      WheelchairUi.publish(ros, '/ui/resume', 'std_msgs/Bool', { data: true });
+    });
+  });
+</script>

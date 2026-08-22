@@ -21,6 +21,12 @@ setup(
             glob(os.path.join('urdf', '*'))),
         (os.path.join('share', package_name, 'udev'),
             glob(os.path.join('udev', '*'))),
+        (os.path.join('share', package_name, 'web'),
+            glob(os.path.join('web', '*.html')) +
+            glob(os.path.join('web', '*.js')) +
+            glob(os.path.join('web', '*.css'))),
+        (os.path.join('share', package_name, 'web', 'vendor'),
+            glob(os.path.join('web', 'vendor', '*'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -35,6 +41,7 @@ setup(
             'safety_monitor = autonomous_wheelchair.safety_monitor:main',
             'waypoint_navigator = autonomous_wheelchair.waypoint_navigator:main',
             'wasd_teleop = autonomous_wheelchair.wasd_teleop:main',
+            'ui_bridge = autonomous_wheelchair.ui_bridge:main',
         ],
     },
 )

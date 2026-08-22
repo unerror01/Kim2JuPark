@@ -1,0 +1,21 @@
+<title>목적지 선택</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="screen">
+  <h1>어디로 가시겠어요?</h1>
+  <div id="dest-list" class="dest-list">
+    <p class="empty">목적지 목록 불러오는 중...</p>
+  </div>
+</div>
+
+<script src="vendor/roslib.min.js"></script>
+<script src="ros-connection.js"></script>
+<script src="destination-list.js"></script>
+<script>
+  WheelchairUi.connect(function (ros) {
+    WheelchairUi.renderDestinationList(ros, document.getElementById('dest-list'), function (name) {
+      WheelchairUi.publish(ros, '/ui/select_destination', 'std_msgs/String', { data: name });
+      window.location.href = 'navigating.html';
+    });
+  });
+</script>

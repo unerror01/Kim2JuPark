@@ -1,0 +1,42 @@
+<title>휠체어 시작 화면</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="screen center">
+  <h1>환영합니다</h1>
+  <p class="subtitle">자율주행 휠체어</p>
+  <button id="start-btn" class="big-btn primary">시작하기</button>
+</div>
+
+<script src="vendor/roslib.min.js"></script>
+<script src="ros-connection.js"></script>
+<script>
+  WheelchairUi.connect(function (ros) {
+    // 이미 진행 중인 이동/작업이 있으면 새로고침 시 해당 화면으로 바로 이동
+    var tripStateTopic = new ROSLIB.Topic({
+      ros: ros, name: '/trip_state', messageType: 'std_msgs/String',
+    });
+    tripStateTopic.subscribe(function (msg) {
+      tripStateTopic.unsubscribe();
+      switch (msg.data) {
+        case 'NAVIGATING':
+        case 'RETURNING':
+        case 'STOPPED':
+        case 'FAILED':
+          window.location.href = 'navigating.html';
+          break;
+        case 'ARRIVED':
+          window.location.href = 'arrived.html';
+          break;
+        case 'MANUAL':
+          window.location.href = 'manual.html';
+          break;
+        default:
+          break; // IDLE: 웰컴 화면 유지
+      }
+    });
+  });
+
+  document.getElementById('start-btn').addEventListener('click', function () {
+    window.location.href = 'destination.html';
+  });
+</script>

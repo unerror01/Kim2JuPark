@@ -21,6 +21,7 @@ def generate_launch_description():
     params_file = LaunchConfiguration('params_file')
     autostart = LaunchConfiguration('autostart')
     use_rviz = LaunchConfiguration('use_rviz')
+    use_ui = LaunchConfiguration('use_ui')
 
     declare_map = DeclareLaunchArgument(
         'map', description='SLAM 으로 만든 map yaml 파일 경로 (필수)')
@@ -32,6 +33,8 @@ def generate_launch_description():
         'autostart', default_value='true', description='lifecycle 노드 자동 시작 여부')
     declare_use_rviz = DeclareLaunchArgument(
         'use_rviz', default_value='true', description='rviz2 실행 여부')
+    declare_use_ui = DeclareLaunchArgument(
+        'use_ui', default_value='true', description='태블릿/관리자 웹 UI (rosbridge+ui_bridge) 실행 여부')
 
     configured_params = RewrittenYaml(
         source_file=params_file,
@@ -177,11 +180,18 @@ def generate_launch_description():
         condition=IfCondition(use_rviz),
     )
 
+    ui_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_share, 'launch', 'ui.launch.py')),
+        condition=IfCondition(use_ui),
+    )
+
     return LaunchDescription([
         declare_map,
         declare_params_file,
         declare_autostart,
         declare_use_rviz,
+        declare_use_ui,
         bringup_launch,
         map_server_node,
         amcl_node,
@@ -197,4 +207,5 @@ def generate_launch_description():
         lifecycle_manager_navigation_node,
         safety_monitor_node,
         rviz_node,
+        ui_launch,
     ])

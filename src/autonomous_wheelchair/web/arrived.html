@@ -1,0 +1,25 @@
+<title>도착</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="screen center">
+  <h1>목적지에 도착했습니다</h1>
+  <div class="action-row">
+    <button id="return-btn" class="big-btn primary">반납</button>
+    <button id="wait-btn" class="big-btn neutral">대기</button>
+  </div>
+</div>
+
+<script src="vendor/roslib.min.js"></script>
+<script src="ros-connection.js"></script>
+<script>
+  WheelchairUi.connect(function (ros) {
+    document.getElementById('return-btn').addEventListener('click', function () {
+      WheelchairUi.publish(ros, '/ui/return_to_start', 'std_msgs/Bool', { data: true });
+      window.location.href = 'navigating.html';
+    });
+    document.getElementById('wait-btn').addEventListener('click', function () {
+      WheelchairUi.publish(ros, '/ui/set_manual_mode', 'std_msgs/Bool', { data: true });
+      window.location.href = 'manual.html';
+    });
+  });
+</script>

@@ -1,34 +1,14 @@
 #!/usr/bin/env python3
 """waypoints.yaml 에 정의된 이름으로 목표 지점 이동 (nav2_simple_commander 사용)."""
 
-import math
 import os
-
-import yaml
 
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 
-from geometry_msgs.msg import PoseStamped
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
-
-def yaw_to_pose(navigator, name, wp):
-    pose = PoseStamped()
-    pose.header.frame_id = 'map'
-    pose.header.stamp = navigator.get_clock().now().to_msg()
-    pose.pose.position.x = float(wp['x'])
-    pose.pose.position.y = float(wp['y'])
-    yaw = float(wp.get('yaw', 0.0))
-    pose.pose.orientation.z = math.sin(yaw / 2.0)
-    pose.pose.orientation.w = math.cos(yaw / 2.0)
-    return pose
-
-
-def load_waypoints(path):
-    with open(path, 'r') as f:
-        data = yaml.safe_load(f) or {}
-    return data.get('waypoints', {})
+from autonomous_wheelchair.waypoints import load_waypoints, yaw_to_pose
 
 
 def main(args=None):
@@ -57,7 +37,7 @@ def main(args=None):
     navigator.waitUntilNav2Active()
 
     if tour:
-        poses = [yaw_to_pose(navigator, name, wp) for name, wp in waypoints.items()]
+        poses = [yaw_to_pose(navigator.get_clock(), name, wp) for name, wp in waypoints.items()]
         navigator.get_logger().info('전체 순회 시작: %s' % ', '.join(waypoints.keys()))
         navigator.followWaypoints(poses)
     else:
@@ -67,7 +47,7 @@ def main(args=None):
                 (waypoint_name, ', '.join(waypoints.keys())))
             rclpy.shutdown()
             return
-        pose = yaw_to_pose(navigator, waypoint_name, waypoints[waypoint_name])
+        pose = yaw_to_pose(navigator.get_clock(), waypoint_name, waypoints[waypoint_name])
         navigator.get_logger().info("'%s' 로 이동 시작" % waypoint_name)
         navigator.goToPose(pose)
 

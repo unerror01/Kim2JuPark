@@ -1,0 +1,92 @@
+<title>수동 제어</title>
+<link rel="stylesheet" href="style.css">
+
+<div class="screen">
+  <h1>수동 제어</h1>
+  <p class="subtitle">버튼을 누르고 있는 동안만 움직입니다.</p>
+
+  <div class="dpad">
+    <div></div>
+    <button id="btn-fwd" aria-label="전진">▲</button>
+    <div></div>
+    <button id="btn-left" aria-label="좌회전">◀</button>
+    <div></div>
+    <button id="btn-right" aria-label="우회전">▶</button>
+    <div></div>
+    <button id="btn-back" aria-label="후진">▼</button>
+    <div></div>
+  </div>
+
+  <div class="action-row">
+    <button id="auto-btn" class="big-btn primary">자동전환 (목적지 선택으로)</button>
+  </div>
+
+  <h1 style="font-size:1.6rem; margin-top: 12px;">목적지로 바로 이동</h1>
+  <div id="dest-list" class="dest-list">
+    <p class="empty">목적지 목록 불러오는 중...</p>
+  </div>
+</div>
+
+<script src="vendor/roslib.min.js"></script>
+<script src="ros-connection.js"></script>
+<script src="destination-list.js"></script>
+<script>
+  var LINEAR_SPEED = 0.3;  // m/s, 수동 조작은 wasd_teleop 시험 속도보다 보수적으로
+  var ANGULAR_SPEED = 0.5; // rad/s
+  var PUBLISH_HZ = 10;
+
+  WheelchairUi.connect(function (ros) {
+    var joystickTopic = new ROSLIB.Topic({
+      ros: ros, name: '/ui/joystick', messageType: 'geometry_msgs/Twist',
+    });
+
+    var driveInterval = null;
+
+    function publishTwist(v, w) {
+      joystickTopic.publish(new ROSLIB.Message({
+        linear: { x: v, y: 0, z: 0 },
+        angular: { x: 0, y: 0, z: w },
+      }));
+    }
+
+    function startDrive(v, w) {
+      stopDrive();
+      publishTwist(v, w);
+      driveInterval = setInterval(function () { publishTwist(v, w); }, 1000 / PUBLISH_HZ);
+    }
+
+    function stopDrive() {
+      if (driveInterval) {
+        clearInterval(driveInterval);
+        driveInterval = null;
+      }
+      publishTwist(0, 0);
+    }
+
+    function bindHold(el, v, w) {
+      el.addEventListener('pointerdown', function (e) { e.preventDefault(); startDrive(v, w); });
+      el.addEventListener('pointerup', stopDrive);
+      el.addEventListener('pointerleave', stopDrive);
+      el.addEventListener('pointercancel', stopDrive);
+    }
+
+    bindHold(document.getElementById('btn-fwd'), LINEAR_SPEED, 0);
+    bindHold(document.getElementById('btn-back'), -LINEAR_SPEED, 0);
+    bindHold(document.getElementById('btn-left'), 0, ANGULAR_SPEED);
+    bindHold(document.getElementById('btn-right'), 0, -ANGULAR_SPEED);
+
+    document.getElementById('auto-btn').addEventListener('click', function () {
+      stopDrive();
+      WheelchairUi.publish(ros, '/ui/set_manual_mode', 'std_msgs/Bool', { data: false });
+      window.location.href = 'destination.html';
+    });
+
+    WheelchairUi.renderDestinationList(ros, document.getElementById('dest-list'), function (name) {
+      stopDrive();
+      WheelchairUi.publish(ros, '/ui/select_destination', 'std_msgs/String', { data: name });
+      window.location.href = 'navigating.html';
+    });
+
+    window.addEventListener('beforeunload', stopDrive);
+  });
+</script>

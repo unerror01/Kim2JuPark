@@ -5,11 +5,16 @@ import math
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+from rclpy.qos import (
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSProfile,
+    QoSReliabilityPolicy,
+)
 
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Float32, String
+from std_msgs.msg import Bool, Float32, String
 
 
 def smoothstep(t):
@@ -44,8 +49,13 @@ class SafetyMonitor(Node):
 
         self.last_cmd = Twist()
         self.last_cmd_time = None
+        self.last_cmd_manual = Twist()
+        self.last_cmd_manual_time = None
         self.last_scan = None
         self.last_scan_time = None
+
+        self.control_mode = 'AUTO'
+        self.estop = False
 
         self.out_v = 0.0
         self.out_w = 0.0
@@ -56,8 +66,23 @@ class SafetyMonitor(Node):
             depth=5,
         )
 
+        # ui_bridge 가 /control_mode, /estop 을 transient_local 로 발행하므로
+        # 구독 QoS 도 동일하게 맞춰야 늦게 시작해도 마지막 값을 즉시 받는다.
+        latched_qos = QoSProfile(
+            reliability=QoSReliabilityPolicy.RELIABLE,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=1,
+        )
+
         self.cmd_sub = self.create_subscription(
             Twist, '/cmd_vel_raw', self.cmd_callback, 10)
+        self.cmd_manual_sub = self.create_subscription(
+            Twist, '/cmd_vel_manual', self.cmd_manual_callback, 10)
+        self.control_mode_sub = self.create_subscription(
+            String, '/control_mode', self.control_mode_callback, latched_qos)
+        self.estop_sub = self.create_subscription(
+            Bool, '/estop', self.estop_callback, latched_qos)
         self.scan_sub = self.create_subscription(
             LaserScan, '/scan', self.scan_callback, scan_qos)
 
@@ -72,6 +97,16 @@ class SafetyMonitor(Node):
     def cmd_callback(self, msg: Twist):
         self.last_cmd = msg
         self.last_cmd_time = self.get_clock().now()
+
+    def cmd_manual_callback(self, msg: Twist):
+        self.last_cmd_manual = msg
+        self.last_cmd_manual_time = self.get_clock().now()
+
+    def control_mode_callback(self, msg: String):
+        self.control_mode = msg.data
+
+    def estop_callback(self, msg: Bool):
+        self.estop = msg.data
 
     def scan_callback(self, msg: LaserScan):
         self.last_scan = msg
@@ -134,8 +169,23 @@ class SafetyMonitor(Node):
     def control_loop(self):
         now = self.get_clock().now()
 
-        cmd_ok = (self.last_cmd_time is not None and
-                  (now - self.last_cmd_time).nanoseconds / 1e9 <= self.cmd_timeout)
+        # /estop 이 켜져 있으면 입력 소스(자동/수동)나 통신 상태와 무관하게 그 자리에서
+        # 정지 상태를 유지한다 (가감속 스무딩도 우회) — /ui/resume 이 꺼줄 때까지 해제 안 됨.
+        if self.estop:
+            self.out_v = 0.0
+            self.out_w = 0.0
+            self._publish(0.0, 0.0, None, 'ESTOP')
+            return
+
+        if self.control_mode == 'MANUAL':
+            active_cmd = self.last_cmd_manual
+            active_cmd_time = self.last_cmd_manual_time
+        else:
+            active_cmd = self.last_cmd
+            active_cmd_time = self.last_cmd_time
+
+        cmd_ok = (active_cmd_time is not None and
+                  (now - active_cmd_time).nanoseconds / 1e9 <= self.cmd_timeout)
         scan_ok = (self.last_scan_time is not None and
                    (now - self.last_scan_time).nanoseconds / 1e9 <= self.scan_timeout)
 
@@ -145,8 +195,8 @@ class SafetyMonitor(Node):
             self._publish(0.0, 0.0, None, 'TIMEOUT')
             return
 
-        v_raw = self.last_cmd.linear.x
-        w_raw = self.last_cmd.angular.z
+        v_raw = active_cmd.linear.x
+        w_raw = active_cmd.angular.z
 
         if abs(v_raw) < 0.02:
             # 제자리 회전: 직사각 통로 판정 예외 (전진/후진이 아니므로 장애물 감속 미적용)

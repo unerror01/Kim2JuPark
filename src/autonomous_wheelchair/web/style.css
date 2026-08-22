@@ -1,0 +1,235 @@
+/* 병원용 휠체어 태블릿 UI 공용 스타일 - 큰 글씨/큰 버튼, 태블릿 터치 기준 */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  background: #10131a;
+  color: #f2f4f8;
+}
+
+.screen {
+  min-height: 100vh;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.screen.center {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+h1 {
+  font-size: 2.6rem;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  font-size: 1.3rem;
+  color: #9aa5b8;
+  margin: 0 0 12px;
+}
+
+.big-btn {
+  font-size: 1.6rem;
+  padding: 28px 40px;
+  border-radius: 18px;
+  border: none;
+  cursor: pointer;
+  min-height: 88px;
+  min-width: 220px;
+  font-weight: 700;
+  transition: transform 0.05s ease-in-out, filter 0.15s;
+}
+
+.big-btn:active {
+  transform: scale(0.97);
+}
+
+.big-btn.primary {
+  background: #2f6fed;
+  color: #fff;
+}
+
+.big-btn.danger {
+  background: #e5484d;
+  color: #fff;
+}
+
+.big-btn.warning {
+  background: #f5a623;
+  color: #23180a;
+}
+
+.big-btn.neutral {
+  background: #2a3140;
+  color: #f2f4f8;
+}
+
+.big-btn.success {
+  background: #30a46c;
+  color: #fff;
+}
+
+.big-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dest-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.dest-btn {
+  font-size: 1.4rem;
+  padding: 24px;
+  border-radius: 16px;
+  border: 2px solid #2f6fed;
+  background: #161b26;
+  color: #f2f4f8;
+  cursor: pointer;
+  min-height: 80px;
+  font-weight: 600;
+}
+
+.dest-btn:active {
+  background: #2f6fed;
+}
+
+.empty {
+  color: #9aa5b8;
+  font-size: 1.1rem;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.status-banner {
+  padding: 16px 20px;
+  border-radius: 14px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background: #1c2534;
+}
+
+.status-banner.stopped {
+  background: #4a1f22;
+  color: #ff9d9d;
+}
+
+.status-banner.failed {
+  background: #4a1f22;
+  color: #ff9d9d;
+}
+
+.map-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  background: #05070a;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #2a3140;
+}
+
+.map-wrap canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.dpad {
+  display: grid;
+  grid-template-columns: 100px 100px 100px;
+  grid-template-rows: 100px 100px 100px;
+  gap: 10px;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.dpad button {
+  font-size: 2rem;
+  border-radius: 16px;
+  border: none;
+  background: #2a3140;
+  color: #f2f4f8;
+  cursor: pointer;
+}
+
+.dpad button:active {
+  background: #2f6fed;
+}
+
+table.wp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.05rem;
+}
+
+table.wp-table th, table.wp-table td {
+  border-bottom: 1px solid #2a3140;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+table.wp-table input {
+  font-size: 1rem;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #2a3140;
+  background: #05070a;
+  color: #f2f4f8;
+}
+
+.call-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.call-item {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #1c2534;
+  font-size: 1.1rem;
+}
+
+.call-item.emergency,
+.call-item.support {
+  background: #4a1f22;
+  color: #ff9d9d;
+}
+
+.small-btn {
+  font-size: 0.95rem;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #2a3140;
+  color: #f2f4f8;
+  cursor: pointer;
+}
+
+.small-btn.danger {
+  background: #e5484d;
+  color: #fff;
+}
