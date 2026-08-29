@@ -6,13 +6,18 @@ ESP32-S3 는 원래 조이스틱 신호를 대신해 I2C DAC(0x60=좌우, 0x61=�
 수동/자율 경로를 전환한다. DAC 캘리브레이션은 전부 ESP32 펌웨어 쪽 책임이므로,
 이 노드는 -1.0~1.0 로 정규화한 throttle/steering 값만 시리얼로 보낸다.
 
-★ 엔코더 미장착 ★
-아직 휠 엔코더가 없어서 실제 바퀴 회전을 측정할 방법이 없다. 그래서 /wheel/odometry
-와 /joint_states 는 "명령한 속도를 그대로 따라간다"고 가정하는 open-loop 적분치이다.
-엔코더가 생기면 이 open-loop 적분을 실측 틱 기반 적분으로 교체할 것.
+★ 엔코더: 틱 카운트만 읽는 중, 오도메트리는 아직 open-loop ★
+ESP32가 "E,<ltick>,<rtick>\\n" 을 20ms 주기로 보내오는 것을 별도 스레드에서 읽어
+/wheel/ticks 로 원시 카운트만 발행한다 (Omron E6B2-CWZ6C, 360P/R, 타이어 마찰
+롤러 장착 - 롤러/타이어 지름비를 아직 측정하지 않아 거리로 환산은 안 함).
+/wheel/odometry 와 /joint_states 는 여전히 "명령한 속도를 그대로 따라간다"고
+가정하는 open-loop 적분치이다 - 롤러 기어비 실측 및 STEERING_TRIM_COUNTS
+자동 보정이 끝나면 실측 틱 기반 적분으로 교체할 것.
 """
 
 import math
+import threading
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -22,6 +27,7 @@ import serial
 from geometry_msgs.msg import Quaternion, Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Int32MultiArray
 
 
 def yaw_to_quaternion(yaw):
@@ -74,6 +80,11 @@ class BaseDriver(Node):
         self.right_wheel_angle = 0.0
         self.last_loop_time = self.get_clock().now()
 
+        self.left_ticks = 0
+        self.right_ticks = 0
+        self._ticks_lock = threading.Lock()
+        self._last_tick_log_time = self.get_clock().now()
+
         self.ser = None
         self._open_serial()
 
@@ -81,9 +92,14 @@ class BaseDriver(Node):
             Twist, '/cmd_vel', self.cmd_vel_callback, 10)
         self.odom_pub = self.create_publisher(Odometry, '/wheel/odometry', 10)
         self.joint_pub = self.create_publisher(JointState, '/joint_states', 10)
+        self.ticks_pub = self.create_publisher(Int32MultiArray, '/wheel/ticks', 10)
 
         self.control_timer = self.create_timer(
             1.0 / self.control_rate, self.control_loop)
+
+        self._reader_thread = threading.Thread(
+            target=self._serial_reader_loop, daemon=True)
+        self._reader_thread.start()
 
         self.get_logger().info('base_driver started (port=%s, baud=%d)' %
                                 (self.serial_port, self.baudrate))
@@ -153,6 +169,54 @@ class BaseDriver(Node):
         except serial.SerialException as exc:
             self.get_logger().error('시리얼 송신 실패: %s' % exc)
             self.ser = None
+
+    def _serial_reader_loop(self):
+        # 별도 스레드: ESP32가 보내는 "E,<ltick>,<rtick>\n" 을 읽어 틱을 갱신한다.
+        # 쓰기는 control_loop(메인 스레드)에서, 읽기는 여기서 - 같은 Serial
+        # 객체를 두 스레드가 쓰지만 읽기/쓰기 방향이 달라 pyserial(posix)에서
+        # 안전하게 동작한다.
+        while rclpy.ok():
+            ser = self.ser
+            if ser is None or not ser.is_open:
+                time.sleep(0.1)
+                continue
+            try:
+                raw = ser.readline()
+            except serial.SerialException:
+                time.sleep(0.1)
+                continue
+            if not raw:
+                continue
+            try:
+                line = raw.decode('ascii', errors='ignore').strip()
+            except UnicodeDecodeError:
+                continue
+            if not line.startswith('E,'):
+                continue
+            parts = line.split(',')
+            if len(parts) != 3:
+                continue
+            try:
+                left = int(parts[1])
+                right = int(parts[2])
+            except ValueError:
+                continue
+            self._handle_encoder_ticks(left, right)
+
+    def _handle_encoder_ticks(self, left, right):
+        with self._ticks_lock:
+            self.left_ticks = left
+            self.right_ticks = right
+
+        msg = Int32MultiArray()
+        msg.data = [left, right]
+        self.ticks_pub.publish(msg)
+
+        now = self.get_clock().now()
+        if (now - self._last_tick_log_time).nanoseconds / 1e9 >= 2.0:
+            self._last_tick_log_time = now
+            self.get_logger().info(
+                '엔코더 틱: left=%d right=%d diff=%d' % (left, right, left - right))
 
     def _integrate_odometry(self, v, w, dt, stamp):
         # open-loop 적분: 엔코더가 없어 명령 속도를 그대로 따른다고 가정한다.

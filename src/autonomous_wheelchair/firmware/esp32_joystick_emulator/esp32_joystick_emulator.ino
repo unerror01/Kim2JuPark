@@ -9,6 +9,13 @@
 //   I2C: SDA=GPIO21, SCL=GPIO20
 //   DAC: 0x60 = 좌우(steering), 0x61 = 전후진(throttle)  (둘 다 MCP4725A0, 주소핀만 다름)
 //   릴레이: IN1=GPIO4, IN2=GPIO5, LOW 출력 시 자율주행 모드로 전환
+//   엔코더 (Omron E6B2-CWZ6C, 360P/R, NPN open-collector, 5~24V 전원):
+//     좌: Black(Phase A)=GPIO15, White(Phase B)=GPIO16
+//     우: Black(Phase A)=GPIO17, White(Phase B)=GPIO18
+//     Brown(+Vcc)=5V, Blue(0V)=GND, Orange(Phase Z)=미사용(미배선)
+//     NPN open-collector 출력이므로 3.3V로 풀업 필요 (권장 4.7kΩ, A/B선마다 각각).
+//     GPIO 내부 풀업(INPUT_PULLUP)도 같이 걸어두지만 외부 풀업 저항은 반드시 추가할 것
+//     (안 그러면 신호가 3.3V까지 안 올라올 수 있음 - 실측 필요).
 //
 // ★ 비상 정지/수동 조작 전환 버튼은 아직 미구현 (추후 작업) ★
 
@@ -18,6 +25,11 @@ static const int PIN_SDA = 21;
 static const int PIN_SCL = 20;
 static const int PIN_RELAY_IN1 = 4;
 static const int PIN_RELAY_IN2 = 5;
+
+static const int PIN_ENC_L_A = 15;
+static const int PIN_ENC_L_B = 16;
+static const int PIN_ENC_R_A = 17;
+static const int PIN_ENC_R_B = 18;
 
 static const uint8_t DAC_ADDR_STEERING = 0x60;  // 좌우
 static const uint8_t DAC_ADDR_THROTTLE = 0x61;  // 전후진
@@ -65,6 +77,40 @@ static const unsigned long CMD_TIMEOUT_MS = 500;
 
 String rxBuffer;
 unsigned long lastCmdMillis = 0;
+
+// ── 휠 엔코더 (quadrature, 인터럽트 기반 x4 디코딩) ──────────────────────
+// PCNT 하드웨어 대신 CHANGE 인터럽트 + 상태 전이표로 구현 (arduino-esp32 코어
+// 버전에 상관없이 동작, 이 정도 펄스 속도(수 kHz 이하)에는 충분함).
+// 표 인덱스: (이전 2비트 AB << 2) | (현재 2비트 AB), 값: -1/0/+1 틱.
+static const int8_t QUAD_DECODE_TABLE[16] = {
+    0, -1, 1, 0,
+    1, 0, 0, -1,
+    -1, 0, 0, 1,
+    0, 1, -1, 0};
+
+volatile long leftTicks = 0;
+volatile long rightTicks = 0;
+volatile uint8_t leftEncState = 0;
+volatile uint8_t rightEncState = 0;
+
+unsigned long lastEncoderSendMillis = 0;
+static const unsigned long ENCODER_SEND_INTERVAL_MS = 20;
+
+void IRAM_ATTR onLeftEncoderChange() {
+  uint8_t a = digitalRead(PIN_ENC_L_A);
+  uint8_t b = digitalRead(PIN_ENC_L_B);
+  uint8_t newState = (a << 1) | b;
+  leftTicks += QUAD_DECODE_TABLE[(leftEncState << 2) | newState];
+  leftEncState = newState;
+}
+
+void IRAM_ATTR onRightEncoderChange() {
+  uint8_t a = digitalRead(PIN_ENC_R_A);
+  uint8_t b = digitalRead(PIN_ENC_R_B);
+  uint8_t newState = (a << 1) | b;
+  rightTicks += QUAD_DECODE_TABLE[(rightEncState << 2) | newState];
+  rightEncState = newState;
+}
 
 void writeDac(uint8_t addr, int count) {
   count = constrain(count, DAC_COUNT_MIN, DAC_COUNT_MAX);
@@ -139,6 +185,17 @@ void setup() {
   lastCmdMillis = millis();
 
   rxBuffer.reserve(64);
+
+  pinMode(PIN_ENC_L_A, INPUT_PULLUP);
+  pinMode(PIN_ENC_L_B, INPUT_PULLUP);
+  pinMode(PIN_ENC_R_A, INPUT_PULLUP);
+  pinMode(PIN_ENC_R_B, INPUT_PULLUP);
+  leftEncState = (digitalRead(PIN_ENC_L_A) << 1) | digitalRead(PIN_ENC_L_B);
+  rightEncState = (digitalRead(PIN_ENC_R_A) << 1) | digitalRead(PIN_ENC_R_B);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_L_A), onLeftEncoderChange, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_L_B), onLeftEncoderChange, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_R_A), onRightEncoderChange, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_R_B), onRightEncoderChange, CHANGE);
 }
 
 void loop() {
@@ -159,5 +216,17 @@ void loop() {
   // cmd_vel 워치독과 동일한 타임아웃: 명령이 끊기면 중립으로 복귀
   if (millis() - lastCmdMillis > CMD_TIMEOUT_MS) {
     setThrottleSteering(0.0f, 0.0f);
+  }
+
+  if (millis() - lastEncoderSendMillis >= ENCODER_SEND_INTERVAL_MS) {
+    lastEncoderSendMillis = millis();
+    noInterrupts();
+    long lt = leftTicks;
+    long rt = rightTicks;
+    interrupts();
+    Serial.print("E,");
+    Serial.print(lt);
+    Serial.print(",");
+    Serial.println(rt);
   }
 }
